@@ -69,7 +69,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <span class="error">* 为必填的字段</span><br><br>
 
-<form method="post" action="/php_demos/demo_form_current_fill.php">
+<form method="post" action="/php_demos/grammer_demos/demo_form_current_fill.php">
     姓名：<input type="text" name="name" value="<?php echo $name ?>">
     <span class="error">*<?php echo $nameErr; ?></span>
     <br><br>
