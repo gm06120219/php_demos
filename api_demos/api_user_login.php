@@ -16,6 +16,20 @@ function PostParam($param)
 $username = @PostParam('username');
 $password = @PostParam('password');
 
+error_log("Login by " . $username . "\n", 3, "/var/tmp/api.log");
+
+// login mysql
+$con = mysqli_connect('127.0.0.1', 'root', '', 'api_db', '3306');
+// Server error fail 50000
+if (!$con) {
+    $output = array('data' => NULL, 'info' => 'Server sql error.', 'code' => 50000);
+    exit(json_encode($output));
+}
+
+// new memcache object
+$mem = new Memcache();
+$mem->connect('127.0.0.1', 11211);
+
 $output = array();
 
 // Username, password cannot be empty 20002
@@ -34,15 +48,6 @@ if (!$string_illegal->userName($username, 'ALL', 20) ||
     exit(json_encode($output));
 }
 
-// insert mysql
-$con = mysqli_connect('127.0.0.1', 'root', '', 'api_db', '3306');
-
-// Server error fail 50000
-if (!$con) {
-    $output = array('data' => NULL, 'info' => 'Server sql error.', 'code' => 50000);
-    exit(json_encode($output));
-}
-
 $sql = 'SELECT * FROM t_user WHERE Username="' . $username . '"';
 
 $result = mysqli_query($con, $sql);
@@ -55,10 +60,19 @@ if (!$result) {
 
 mysqli_close($con);
 
-$row = mysqli_fetch_array($result);
-if ($row['Password'] == $password) {
+$user_info = mysqli_fetch_array($result);
+if ($user_info['Password'] == $password) {
+    // set data into the memcache
+    $token = md5($username . time());
+//    error_log("user info: " . json_encode($user_info) . "\n", 3, "/var/tmp/api.log");
+    $mem->set($token, $user_info);
+    $mem->close();
+
     // login success;
-    $output = array('data' => array('Nickname' => $row['Nickname'], 'Lv' => $row['Lv'], 'Enable' => $row['Enable']), 'info' => 'Success . ', 'code' => 20000);
+    $output = array('data' => array('Token' => $token,
+        'Nickname' => $user_info['Nickname']),
+        'info' => 'Success', 'code' => 20000
+    );
     exit(json_encode($output));
 } else {
     // login fail;
